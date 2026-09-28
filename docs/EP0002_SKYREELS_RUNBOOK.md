@@ -6,9 +6,18 @@ This runbook prepares EP0002 for real video generation with SkyReels-V3, using t
 - Luna: cream puppy, purple bandana
 - Park: bright neighborhood puppy park
 
+## Current Backend Order
+
+Use this order for EP0002:
+
+1. **Wan2.2 TI2V-5B smoke test** for the lowest-cost real-motion validation on a 24 GB GPU.
+2. **SkyReels reference-to-video** if Wan loses character consistency or treats the reference board like a collage.
+
+Wan is documented separately in [EP0002_WAN_RUNBOOK.md](EP0002_WAN_RUNBOOK.md). SkyReels remains the stronger multi-reference route because it can receive Toby, Luna, and Park as separate references.
+
 ## Why this path
 
-The previous FFmpeg/Ken Burns render only adds camera motion over still images. SkyReels-V3 can generate actual motion from reference images and text prompts, so it is the better technical route for a fluid episode.
+The previous FFmpeg/Ken Burns render only adds camera motion over still images. SkyReels-V3 can generate actual motion from reference images and text prompts, so it is the better technical route for a fluid episode when multi-reference consistency is required.
 
 ## Hardware reality
 
