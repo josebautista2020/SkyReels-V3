@@ -27,9 +27,10 @@ set -euo pipefail
 #   BRANCH=codex/ep0002-skyreels-runner
 #   RESOLUTION=480P
 #   CLIP_DURATION=5
+#   MAX_SCENES=1            # set 8 only after smoke test passes
 #
 # Cost discipline:
-# - Start with RESOLUTION=480P and CLIP_DURATION=5.
+# - Start with RESOLUTION=480P, CLIP_DURATION=5, MAX_SCENES=1.
 # - Stop/delete the VM immediately after collecting the output.
 # - Full 60s generation should only run after a successful 1-2 clip smoke test.
 
@@ -45,6 +46,7 @@ INSTANCE_NAME="${INSTANCE_NAME:-skyreels-ep0002-smoke}"
 BRANCH="${BRANCH:-codex/ep0002-skyreels-runner}"
 RESOLUTION="${RESOLUTION:-480P}"
 CLIP_DURATION="${CLIP_DURATION:-5}"
+MAX_SCENES="${MAX_SCENES:-1}"
 
 cat > /tmp/skyreels-ep0002-startup.sh <<EOF
 #!/usr/bin/env bash
@@ -75,6 +77,7 @@ export AUDIO_WAV=/opt/ep0002-assets/ep0002-technical-silent-audio.wav
 export SUBTITLES_SRT=/opt/ep0002-assets/ep0002-subtitles.srt
 export RESOLUTION=${RESOLUTION}
 export CLIP_DURATION=${CLIP_DURATION}
+export MAX_SCENES=${MAX_SCENES}
 export LOW_VRAM=1
 export OFFLOAD=1
 
