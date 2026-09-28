@@ -26,8 +26,14 @@ The EP0002 runner defaults to:
 - `RESOLUTION=540P`
 - `LOW_VRAM=1`
 - `OFFLOAD=1`
-- 8 generated clips
-- final trim to 60 seconds
+- `MAX_SCENES=8`
+- final trim to 60 seconds when all 8 scenes are generated
+
+For cost control, run smoke tests first with:
+
+- `RESOLUTION=480P`
+- `CLIP_DURATION=5`
+- `MAX_SCENES=1`
 
 For best output, use a GPU with 24 GB+ VRAM. For practical lower-cost testing, start with an L4/A10-class GPU at `480P` or `540P`. For quality review, move to A100/H100-class GPUs if available.
 
@@ -36,6 +42,7 @@ For best output, use a GPU with 24 GB+ VRAM. For practical lower-cost testing, s
 ```bash
 git clone https://github.com/josebautista2020/SkyReels-V3.git
 cd SkyReels-V3
+git checkout codex/ep0002-skyreels-runner
 pip install -r requirements.txt
 ```
 
@@ -58,33 +65,41 @@ export AUDIO_WAV="/path/to/ep0002-technical-silent-audio.wav"
 export SUBTITLES_SRT="/path/to/ep0002-subtitles.srt"
 ```
 
-## Run EP0002
+## Smoke Test First
 
-Conservative GPU test:
+Run a one-scene smoke test before spending GPU time on the full episode:
 
 ```bash
 export RESOLUTION=480P
-export CLIP_DURATION=8
+export CLIP_DURATION=5
+export MAX_SCENES=1
 export LOW_VRAM=1
 export OFFLOAD=1
 bash scripts/run_ep0002_reference_to_video.sh
 ```
 
-Higher-quality test:
+Expected output:
+
+```text
+result/ep0002_skyreels/ep0002_skyreels_smoke_1_scene_master.mp4
+```
+
+If the first scene is visually acceptable, run 2 scenes:
+
+```bash
+export MAX_SCENES=2
+bash scripts/run_ep0002_reference_to_video.sh
+```
+
+## Full EP0002 Run
+
+Only run the full episode after smoke test approval:
 
 ```bash
 export RESOLUTION=540P
 export CLIP_DURATION=8
+export MAX_SCENES=8
 export LOW_VRAM=1
-export OFFLOAD=1
-bash scripts/run_ep0002_reference_to_video.sh
-```
-
-If you have enough VRAM, try 720P:
-
-```bash
-export RESOLUTION=720P
-export LOW_VRAM=0
 export OFFLOAD=1
 bash scripts/run_ep0002_reference_to_video.sh
 ```
@@ -92,8 +107,44 @@ bash scripts/run_ep0002_reference_to_video.sh
 The final output is written to:
 
 ```text
-result/ep0002_skyreels/ep0002_skyreels_master_60s.mp4
+result/ep0002_skyreels/ep0002_skyreels_60s_master.mp4
 ```
+
+## GCP Helper
+
+A conservative GCP helper is included:
+
+```bash
+export GCP_PROJECT="your-project-id"
+export GCS_BUCKET="your-bucket"
+export RESOLUTION=480P
+export CLIP_DURATION=5
+export MAX_SCENES=1
+bash scripts/gcp_ep0002_skyreels_smoke_test.sh
+```
+
+Before running it, upload assets to:
+
+```text
+gs://$GCS_BUCKET/ep0002-assets/Toby.png
+gs://$GCS_BUCKET/ep0002-assets/Luna.png
+gs://$GCS_BUCKET/ep0002-assets/Park.png
+```
+
+Optional:
+
+```text
+gs://$GCS_BUCKET/ep0002-assets/ep0002-technical-silent-audio.wav
+gs://$GCS_BUCKET/ep0002-assets/ep0002-subtitles.srt
+```
+
+The helper creates a GPU VM and writes output to:
+
+```text
+gs://$GCS_BUCKET/ep0002-skyreels-output/
+```
+
+Delete the VM immediately after the test.
 
 ## Cost guidance
 
