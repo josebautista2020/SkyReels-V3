@@ -1,0 +1,43 @@
+FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/workspace/.cache/huggingface \
+    XDG_CACHE_HOME=/workspace/.cache
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    ffmpeg \
+    git \
+    git-lfs \
+    python3.12 \
+    python3.12-dev \
+    python3.12-venv \
+    python3-pip \
+    build-essential \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3.12 -m venv /opt/venv
+ENV PATH=/opt/venv/bin:$PATH
+
+RUN python -m pip install --upgrade pip setuptools wheel
+
+WORKDIR /workspace
+
+# Wan is kept beside SkyReels so this repo can orchestrate either video backend.
+ARG WAN_REF=main
+RUN git clone --depth 1 --branch ${WAN_REF} https://github.com/Wan-Video/Wan2.2.git /workspace/Wan2.2
+WORKDIR /workspace/Wan2.2
+
+# flash_attn can be sensitive to CUDA/PyTorch combinations. Install the rest first;
+# callers can add a matching flash_attn wheel if their GPU image requires it.
+RUN grep -v '^flash_attn' requirements.txt > /tmp/wan-requirements-no-flash-attn.txt \
+    && pip install -r /tmp/wan-requirements-no-flash-attn.txt \
+    && pip install "huggingface_hub[cli]" modelscope pillow
+
+WORKDIR /workspace/SkyReels-V3
+
+CMD ["bash"]
