@@ -13,7 +13,8 @@ set -euo pipefail
 #   OUT_DIR=./result/ep0002_skyreels
 #   MODEL_ID=Skywork/SkyReels-V3-Reference2Video
 #   RESOLUTION=540P        # 480P, 540P, or 720P
-#   CLIP_DURATION=8        # per scene; 8 clips are trimmed to 60s master
+#   CLIP_DURATION=8        # per scene; full run uses 8 clips and trims to 60s
+#   MAX_SCENES=8           # set 1 or 2 for low-cost smoke tests
 #   SEED=42002
 #   LOW_VRAM=1             # 1 adds --low_vram
 #   OFFLOAD=1              # 1 adds --offload
@@ -28,9 +29,15 @@ OUT_DIR="${OUT_DIR:-./result/ep0002_skyreels}"
 MODEL_ID="${MODEL_ID:-Skywork/SkyReels-V3-Reference2Video}"
 RESOLUTION="${RESOLUTION:-540P}"
 CLIP_DURATION="${CLIP_DURATION:-8}"
+MAX_SCENES="${MAX_SCENES:-8}"
 SEED="${SEED:-42002}"
 LOW_VRAM="${LOW_VRAM:-1}"
 OFFLOAD="${OFFLOAD:-1}"
+
+if ! [[ "$MAX_SCENES" =~ ^[0-9]+$ ]] || (( MAX_SCENES < 1 || MAX_SCENES > 8 )); then
+  echo "MAX_SCENES must be an integer from 1 to 8" >&2
+  exit 2
+fi
 
 mkdir -p "$OUT_DIR/clips"
 
@@ -66,6 +73,10 @@ prompts=(
 
 clip_paths=()
 for i in "${!prompts[@]}"; do
+  if (( i >= MAX_SCENES )); then
+    break
+  fi
+
   scene_num=$(printf "%02d" "$((i + 1))")
   seed_for_scene=$((SEED + i))
   before_file_list=$(mktemp)
@@ -98,21 +109,30 @@ for clip in "${clip_paths[@]}"; do
   printf "file '%s'\n" "$(realpath "$clip")" >> "$concat_file"
 done
 
-silent_master="$OUT_DIR/ep0002_skyreels_silent_60s.mp4"
+if (( MAX_SCENES < 8 )); then
+  output_stem="ep0002_skyreels_smoke_${MAX_SCENES}_scene"
+  target_duration=$((MAX_SCENES * CLIP_DURATION))
+else
+  output_stem="ep0002_skyreels_60s"
+  target_duration=60
+fi
+
+silent_master="$OUT_DIR/${output_stem}_silent.mp4"
 ffmpeg -y -f concat -safe 0 -i "$concat_file" \
-  -t 60 \
+  -t "$target_duration" \
   -c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p -r 24 \
   "$silent_master"
 
-final_master="$OUT_DIR/ep0002_skyreels_master_60s.mp4"
+final_master="$OUT_DIR/${output_stem}_master.mp4"
 if [[ -n "${AUDIO_WAV:-}" && -f "$AUDIO_WAV" ]]; then
-  if [[ -n "${SUBTITLES_SRT:-}" && -f "$SUBTITLES_SRT" ]]; then
+  if [[ -n "${SUBTITLES_SRT:-}" && -f "$SUBTITLES_SRT" && "$MAX_SCENES" == "8" ]]; then
     ffmpeg -y -i "$silent_master" -i "$AUDIO_WAV" \
       -vf "subtitles='${SUBTITLES_SRT}':force_style='FontSize=12,BorderStyle=1,Outline=2,Alignment=2,MarginV=80'" \
       -c:v libx264 -preset veryfast -crf 18 \
       -c:a aac -b:a 128k -shortest "$final_master"
   else
     ffmpeg -y -i "$silent_master" -i "$AUDIO_WAV" \
+      -t "$target_duration" \
       -c:v copy -c:a aac -b:a 128k -shortest "$final_master"
   fi
 else
@@ -122,4 +142,4 @@ fi
 ffprobe -v error -show_entries format=duration:stream=index,codec_type,width,height,avg_frame_rate \
   -of json "$final_master"
 
-echo "EP0002 SkyReels master ready: $final_master"
+echo "EP0002 SkyReels output ready: $final_master"
